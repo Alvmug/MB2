@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function hasRole(role) {
+      return isSignedIn() && request.auth.token.role == role;
+    }
+    
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    function isInfluencer() {
+      return hasRole('influencer');
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+<<<<<<< HEAD
+    // --- Collections ---
+
+    // Admins: Only admins can manage other admin records
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Influencers: Public can see basic info (for validation), 
+    // Admins full access, Owners can read their own.
+    match /influencers/{infId} {
+      allow read: if isAdmin() || isOwner(infId) || (isSignedIn() && !request.resource.data.keys().hasAny(['privateKey', 'stats']));
+      allow write: if isAdmin();
+    }
+
+    // Applications: Public can create, Admins can read/update
+    match /applications/{appId} {
+      allow create: if true; 
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Orders: Public can create, Admins full access, Influencers read their referrals
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read: if isAdmin() || (isInfluencer() && resource.data.influencerId == request.auth.uid);
+      allow update: if isAdmin();
+=======
+    // Anyone can read referral codes to verify them at checkout
+    // Direct database write blocked (must go through authenticated backend Express API)
+    match /referrals/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Anyone can submit applications; admin reviews via backend Express API
+    match /influencer_applications/{id} {
+      allow create: if true;
+      allow read, update, delete: if false;
+>>>>>>> 19126e9d219ce029a8e7947beea332fc4163ed7b
+    }
+
+    // Commissions: The Ledger (Read-only for Influencers, Admin full control)
+    match /commissions/{commId} {
+      allow read: if isAdmin() || (isInfluencer() && resource.data.influencerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // Withdrawals: Influencers create/read own, Admins manage
+    match /withdrawals/{withdrawId} {
+      allow create: if isInfluencer();
+      allow read: if isAdmin() || (isInfluencer() && resource.data.influencerId == request.auth.uid);
+      allow update: if isAdmin();
+    }
+
+    // Audit Logs: Strictly Admin
+    match /auditLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Products: Public read, Admin write
+    match /products/{prodId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings & Config
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

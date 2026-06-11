@@ -1,0 +1,46 @@
+{
+  "name": "mad-burning",
+  "version": "1.0.0",
+  "description": "\"# madburning\" \r \"# madburning\" \r \"# madburning.com\"",
+  "main": "server.js",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "build": "vite build",
+    "start": "node server.js",
+    "generate:images": "node scripts/generate-product-images.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mugisha123-max/madburning.com.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mugisha123-max/madburning.com/issues"
+  },
+  "homepage": "https://github.com/mugisha123-max/madburning.com#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "firebase": "^10.12.0",
+    "firebase-admin": "^13.8.0",
+    "lucide-react": "^0.379.0",
+    "nodemailer": "^8.0.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1",
+    "resend": "^6.12.2",
+    "sharp": "^0.34.5",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.2.11"
+  }
+}
+
