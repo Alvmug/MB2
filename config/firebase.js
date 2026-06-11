@@ -1,6 +1,10 @@
-const admin = require('firebase-admin');
+let dbInstance;
+let adminInstance;
 
-if (!admin.apps.length) {
+function initialize() {
+  if (dbInstance) return;
+  
+  const admin = require('firebase-admin');
   let serviceAccount;
   
   try {
@@ -32,14 +36,33 @@ if (!admin.apps.length) {
   } catch (err) {
     console.error("❌ Firebase Initialization Error:", err.message);
   }
+
+  // Safely get Firestore instance
+  try {
+    dbInstance = admin.firestore();
+    
+    // Enable REST fallback for serverless environments (like Vercel) to prevent gRPC cold-start hangs
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      dbInstance.settings({ 
+        preferRest: true,
+        ignoreUndefinedProperties: true
+      });
+      console.log("ℹ️ Firestore REST mode enabled for serverless environment.");
+    }
+  } catch (e) {
+    console.error("❌ Firestore access error:", e.message);
+  }
+  
+  adminInstance = admin;
 }
 
-// Safely get Firestore instance
-let db;
-try {
-  db = admin.firestore();
-} catch (e) {
-  console.error("❌ Firestore access error:", e.message);
-}
-
-module.exports = { db, admin };
+module.exports = {
+  get db() {
+    initialize();
+    return dbInstance;
+  },
+  get admin() {
+    initialize();
+    return adminInstance;
+  }
+};

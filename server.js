@@ -5,7 +5,7 @@ const cors    = require('cors');
 const fs      = require('fs');
 const path    = require('path');
 const { db, admin } = require('./config/firebase');
-const FieldValue = (admin && admin.firestore) ? admin.firestore.FieldValue : null;
+const getFieldValue = () => (admin && admin.firestore) ? admin.firestore.FieldValue : null;
 
 const app = express();
 app.use(cors());
@@ -31,10 +31,11 @@ app.use((req, res, next) => {
 async function updateReferralStats(code, amount, commissionAmount) {
   if (!code) return;
   try {
+    const fv = getFieldValue();
     await db.collection('referrals').doc(code.toUpperCase()).update({
-      totalOrders: FieldValue.increment(1),
-      totalRevenue: FieldValue.increment(Number(amount) || 0),
-      totalCommission: FieldValue.increment(Number(commissionAmount) || 0)
+      totalOrders: fv ? fv.increment(1) : 1,
+      totalRevenue: fv ? fv.increment(Number(amount) || 0) : Number(amount) || 0,
+      totalCommission: fv ? fv.increment(Number(commissionAmount) || 0) : Number(commissionAmount) || 0
     });
   } catch (err) {
     console.error('Failed to update referral stats:', err);

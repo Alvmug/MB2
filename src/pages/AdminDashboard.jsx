@@ -135,7 +135,7 @@ export default function AdminDashboard() {
     let animationInterval = null;
     
     if ((activeModal === 'order-details' || activeModal === 'track-location') && selectedOrder && selectedOrder.latitude && selectedOrder.longitude) {
-      const initAdminMap = () => {
+      const initAdminMap = async () => {
         if (!window.L) return;
         const containerId = activeModal === 'track-location' ? 'admin-track-map-container' : 'admin-map-container';
         const container = document.getElementById(containerId);
@@ -174,25 +174,51 @@ export default function AdminDashboard() {
         const customerMarker = window.L.marker([lat, lng], { icon: flameIcon }).addTo(map);
         customerMarker.bindPopup(`<b>${selectedOrder.customerName}</b><br/>${selectedOrder.address || 'Delivery Location'}`).openPopup();
 
+        const storeIcon = window.L.icon({
+          iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ffaa00" width="48px" height="48px"><path d="M12 2L2 22h20L12 2zm0 4.5L18.5 19H5.5L12 6.5z"/></svg>',
+          iconSize: [36, 36],
+          iconAnchor: [18, 36],
+          popupAnchor: [0, -36]
+        });
+
+        const storeMarker = window.L.marker([storeLat, storeLng], { icon: storeIcon }).addTo(map);
+        storeMarker.bindPopup(`<b>Mad Burning Shop</b><br/>Remera Hub`);
+
+        // Fetch routing from OSRM
+        let routeCoords = [[storeLat, storeLng], [lat, lng]]; // Default fallback (straight line)
+        let distanceKm = 0;
+        let durationSec = 0;
+        let gotRoute = false;
+
+        try {
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${storeLng},${storeLat};${lng},${lat}?overview=full&geometries=geojson`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.routes && data.routes.length > 0) {
+              const geometry = data.routes[0].geometry;
+              routeCoords = geometry.coordinates.map(c => [c[1], c[0]]); // Convert [lng, lat] to [lat, lng]
+              distanceKm = data.routes[0].distance / 1000;
+              durationSec = data.routes[0].duration;
+              gotRoute = true;
+            }
+          }
+        } catch (e) {
+          console.warn("OSRM routing API error, falling back to straight line.", e);
+        }
+
+        // Draw polyline
+        const pathLine = window.L.polyline(routeCoords, {
+          color: 'var(--fire)',
+          weight: 4,
+          opacity: 0.85,
+          dashArray: gotRoute ? null : '5, 10' // Solid line for accurate route, dashed for fallback
+        }).addTo(map);
+
+        // Adjust bounds
+        const bounds = window.L.latLngBounds(routeCoords);
+        map.fitBounds(bounds, { padding: [40, 40] });
+
         if (activeModal === 'track-location') {
-          const storeIcon = window.L.icon({
-            iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ffaa00" width="48px" height="48px"><path d="M12 2L2 22h20L12 2zm0 4.5L18.5 19H5.5L12 6.5z"/></svg>',
-            iconSize: [36, 36],
-            iconAnchor: [18, 36],
-            popupAnchor: [0, -36]
-          });
-
-          const storeMarker = window.L.marker([storeLat, storeLng], { icon: storeIcon }).addTo(map);
-          storeMarker.bindPopup(`<b>Mad Burning Shop</b><br/>Remera Hub`).openPopup();
-
-          // Connect with a dashed polyline path
-          const pathLine = window.L.polyline([[storeLat, storeLng], [lat, lng]], {
-            color: 'var(--fire)',
-            weight: 3,
-            opacity: 0.8,
-            dashArray: '5, 10'
-          }).addTo(map);
-
           // Add animated rider marker along polyline
           const riderMarker = window.L.marker([storeLat, storeLng], {
             icon: window.L.divIcon({
@@ -203,37 +229,45 @@ export default function AdminDashboard() {
             })
           }).addTo(map);
 
-          let pct = 0;
+          let idx = 0;
+          let pauseTicks = 0;
           animationInterval = setInterval(() => {
-            pct += 0.01;
-            if (pct > 1) pct = 0;
-            const currentLat = storeLat + (lat - storeLat) * pct;
-            const currentLng = storeLng + (lng - storeLng) * pct;
-            riderMarker.setLatLng([currentLat, currentLng]);
-          }, 150);
+            if (routeCoords.length > 0) {
+              if (idx === 0 && pauseTicks < 15) {
+                pauseTicks++;
+                return;
+              }
+              if (idx === routeCoords.length - 1 && pauseTicks < 20) {
+                pauseTicks++;
+                return;
+              }
+              pauseTicks = 0;
+              riderMarker.setLatLng(routeCoords[idx]);
+              idx = (idx + 1) % routeCoords.length;
+            }
+          }, Math.max(80, Math.min(200, 3000 / routeCoords.length))); // Dynamic interval based on route length to keep animation smooth
 
           map.riderInterval = animationInterval;
 
-          // Adjust bounds
-          const bounds = window.L.latLngBounds([[storeLat, storeLng], [lat, lng]]);
-          map.fitBounds(bounds, { padding: [50, 50] });
-
           // Telemetry distance & ETA display
-          const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371; // km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-              Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; // Distance in km
-          };
+          if (!gotRoute) {
+            const calculateDistance = (lat1, lon1, lat2, lon2) => {
+              const R = 6371; // km
+              const dLat = (lat2 - lat1) * Math.PI / 180;
+              const dLon = (lon2 - lon1) * Math.PI / 180;
+              const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              return R * c; // Distance in km
+            };
+            distanceKm = calculateDistance(storeLat, storeLng, lat, lng);
+            durationSec = distanceKm * 120; // Approx 2 mins per km
+          }
 
-          const distanceKm = calculateDistance(storeLat, storeLng, lat, lng);
           const distanceStr = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} meters` : `${distanceKm.toFixed(2)} km`;
-          const etaMinutes = Math.round(distanceKm * 2 + 5); // 30km/h avg speed + 5 mins prep
+          const etaMinutes = Math.round(durationSec / 60 + 5); // Add 5 mins prep
           const etaStr = `${etaMinutes} mins`;
 
           setTimeout(() => {
@@ -306,8 +340,13 @@ export default function AdminDashboard() {
       'Content-Type': 'application/json', 
       ...opts.headers 
     };
+    
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 8000); // 8s timeout for admin requests
+
     try {
-      const res = await fetch(path, { ...opts, headers });
+      const res = await fetch(path, { ...opts, headers, signal: controller.signal });
+      clearTimeout(id);
       if (res.status === 401) {
         sessionStorage.removeItem('mb_admin_pass');
         navigate('/admin/login');
@@ -315,6 +354,7 @@ export default function AdminDashboard() {
       }
       return res.json();
     } catch (e) {
+      clearTimeout(id);
       console.error("API Error on " + path, e);
       return { status: 'error', message: e.message };
     }

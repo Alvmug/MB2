@@ -125,9 +125,23 @@ export const CartProvider = ({ children }) => {
 
   const loadMenu = async () => {
     setMenuLoading(true);
+
+    const fetchWithTimeout = async (url, options = {}) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (e) {
+        clearTimeout(id);
+        throw e;
+      }
+    };
+
     try {
-      // Try to load images list
-      const imgRes = await fetch('/api/product-images');
+      // Try to load images list with 5s timeout
+      const imgRes = await fetchWithTimeout('/api/product-images');
       if (imgRes.ok) {
         const imgs = await imgRes.json();
         if (Array.isArray(imgs) && imgs.length) {
@@ -139,7 +153,7 @@ export const CartProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch('/api/menu');
+      const response = await fetchWithTimeout('/api/menu');
       if (!response.ok) throw new Error('Menu server error');
       const data = await response.json();
       
