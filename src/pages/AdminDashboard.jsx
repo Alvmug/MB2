@@ -158,7 +158,7 @@ export default function AdminDashboard() {
         const storeLng = 30.1215; // Remera Hub location
 
         const map = window.L.map(containerId).setView([lat, lng], 14);
-        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
           subdomains: 'abcd',
           maxZoom: 20
@@ -1535,15 +1535,28 @@ export default function AdminDashboard() {
                     >
                       <i className="fa-solid fa-location-crosshairs"></i> Track Live Location
                     </button>
-                    <a 
-                      href={`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="btn btn-fire" 
-                      style={{ width: '100%', justifyContent: 'center', marginTop: '0.8rem' }}
-                    >
-                      <i className="fa-solid fa-map-location-dot"></i> View on Google Maps
-                    </a>
+                    <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
+                      <a 
+                        href={`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn btn-fire" 
+                        style={{ flex: 1, justifyContent: 'center', margin: 0 }}
+                      >
+                        <i className="fa-solid fa-map-location-dot"></i> View Google Maps
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`);
+                          triggerToast("Google Maps link copied to clipboard!", "success");
+                        }}
+                        className="btn btn-dark" 
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        <i className="fa-solid fa-copy"></i> Share Link
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <p style={{ color: 'var(--error)', fontSize: '0.85rem' }}>No location coordinates captured.</p>
@@ -1635,15 +1648,28 @@ export default function AdminDashboard() {
                         )}
                       </div>
                     </div>
-                    <a 
-                      href={`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="btn btn-fire" 
-                      style={{ width: '100%', justifyContent: 'center' }}
-                    >
-                      <i className="fa-solid fa-map-location-dot"></i> Open in Google Maps
-                    </a>
+                    <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
+                      <a 
+                        href={`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn btn-fire" 
+                        style={{ flex: 1, justifyContent: 'center', margin: 0 }}
+                      >
+                        <i className="fa-solid fa-map-location-dot"></i> Open Google Maps
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://www.google.com/maps?q=${selectedOrder.latitude},${selectedOrder.longitude}`);
+                          triggerToast("Google Maps link copied to clipboard!", "success");
+                        }}
+                        className="btn btn-dark" 
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        <i className="fa-solid fa-copy"></i> Share Link
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <div style={{ height: '100%', minHeight: '350px', border: '1px dashed var(--border-color)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
