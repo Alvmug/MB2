@@ -9,7 +9,18 @@ function initialize() {
   
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      let rawCreds = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+      if (rawCreds.startsWith('"') && rawCreds.endsWith('"')) {
+        rawCreds = rawCreds.slice(1, -1);
+      }
+      serviceAccount = JSON.parse(rawCreds);
+      
+      // Handle potential double-escaped newlines in the private key
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      } else if (serviceAccount.privateKey) {
+        serviceAccount.privateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
+      }
     } else if (process.env.FIREBASE_PROJECT_ID) {
       serviceAccount = {
         projectId: process.env.FIREBASE_PROJECT_ID,
